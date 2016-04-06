@@ -14,7 +14,8 @@ typedef struct food_xy{
 }food_xy_t;
 typedef struct snake_body{
 	xy_t xy_snake;
-	struct snake_body *next;	
+	struct snake_body *next;
+    struct snake_body *pre;	
 }snake_body_t;
 
 enum direction{
@@ -30,6 +31,8 @@ static dir[4][2]={
     {0,-1},
 };
 
+static char globalDir=up;
+
 
 snake_body_t *snake_head=NULL;
 
@@ -37,7 +40,7 @@ void gamewindow_init(int x,int y);
 snake_body_t *snake_init();
 snake_body_t *snake_tail(snake_body_t *snake_head);
 int getkeyvalue();
-void snake_show(snake_body_t *snake_head);
+void snake_show(snake_body_t *snake_head,char globalDir);
 int snake_add(snake_body_t *snake_head,food_xy_t *food_xy,DIRECT *snake_dir,DIRECT *keyboard_dir);
 void snake_free(snake_body_t *snake_head);
 int snake_rule(snake_body_t *snake_head,xy_t windows);
@@ -60,11 +63,12 @@ int main()
     attroff(COLOR_PAIR(1));
     refresh();
     while(1){
-        snake_show(snake_head);
-        refresh();
+		
+        snake_show(snake_head,globalDir);
         keyvalue=getkeyvalue();
-        printf("keyvalue=%d\n",keyvalue);
-        sleep(2);
+		refresh();
+        //printf("keyvalue=%x\n",keyvalue);
+        sleep(1);
     }
     return 0;
 	
@@ -73,11 +77,58 @@ int main()
 void gamewindow_init(int x,int y)
 {
     initscr();
+    keypad(stdscr,TRUE);
     refresh();
     box(stdscr,'|','-'); 
     refresh();
 }
 
+int getkeyvalue()
+{
+    //char ch;
+    globalDir=getch();
+    switch(globalDir){
+    case 2:
+        globalDir=up;
+		//printf("globalDir:%d\n",globalDir);
+        break;
+    case 4:
+        globalDir=down;
+		//printf("globalDir:%d\n",globalDir);
+        break;
+    case 3:
+        globalDir=right;
+		//printf("globalDir:%d\n",globalDir);
+        break;
+    case 1:
+        globalDir=left;
+		//printf("globalDir:%d\n",globalDir);
+        break;
+	case '2':
+        globalDir=up;
+        break;
+    case '3':
+        globalDir=down;
+        break;
+    case '4':
+        globalDir=right;
+        break;
+    case '5':
+        globalDir=left;
+        break;
+    case 27:
+        snake_free(snake_head);
+        endwin();
+        exit(1);
+        break;
+    default:
+        printf("error direction!\n");
+		printf("globalDir:%d\n",KEY_UP);
+		
+        break;
+    }
+	return 0;	
+}
 snake_body_t *snake_init()
 {
 	snake_body_t *snake_head,*snake1,*snake2;
@@ -91,6 +142,9 @@ snake_body_t *snake_init()
 		snake_head->next=snake1;
 		snake1->next=snake2;
 		snake2->next=NULL;
+		snake_head->pre=NULL;
+		snake1->pre=snake_head;
+		snake2->pre=snake1;
 		do{
             snake_xy.x=(int)(rand()*1.0/RAND_MAX*COLS);
 		    snake_xy.y=(int)(rand()*1.0/RAND_MAX*LINES);
@@ -124,38 +178,42 @@ snake_body_t *snake_tail(snake_body_t *snake_head)
 
 }
 
-int getkeyvalue()
-{
-    char ch;
-    ch=getch();
-    switch(ch){
-    case KEY_UP:
-        return up;
-    case KEY_DOWN:
-        return down;
-    case KEY_RIGHT:
-        return right;
-    case KEY_LEFT:
-        return left;
-    case 27:
-        snake_free(snake_head);
-        endwin();
-        exit(1);
-    default:
-        printf("ch=%d\n",ch);
-        return ch;
-    }
-	return 0;	
-}
 
-void snake_show(snake_body_t *snake_head)
+
+void snake_show(snake_body_t *snake_head,char globalDir)
 {
     snake_body_t * tmp=NULL;
+    snake_body_t * tmptail=NULL;
     tmp=snake_head;
-    for(;tmp!=NULL;tmp=tmp->next){
-        mvaddch(tmp->xy_snake.y,tmp->xy_snake.x,'*');
-        //refresh();
+	char i=0;
+    tmptail=snake_tail(snake_head);
+	
+	while(tmptail->pre!=NULL){
+		tmptail->xy_snake.x=tmptail->pre->xy_snake.x;
+		tmptail->xy_snake.y=tmptail->pre->xy_snake.y;
+		tmptail=tmptail->pre;
+	}
+    switch(globalDir){
+    case up:
+        tmp->xy_snake.x=tmp->xy_snake.x-1;
+		break;
+	case down:	
+    	tmp->xy_snake.x=tmp->xy_snake.x+1;
+		break;
+	case right:	
+    	tmp->xy_snake.x=tmp->xy_snake.y+1;
+		break;
+	case left:	
+    	tmp->xy_snake.x=tmp->xy_snake.y-1;
+		break;
+	default:
+		printf("error dir!\r");
+		break;
     }
+    for(;tmp!=NULL;tmp=tmp->next){
+        mvaddch(tmp->xy_snake.y,tmp->xy_snake.x,'*');   
+    }
+	
     return ;
 
 }
