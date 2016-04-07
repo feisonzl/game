@@ -2,6 +2,18 @@
 #include <curses.h>
 #include <stdlib.h>
 
+#if 0
+#define LOG(format, args...);   \
+    {                           \
+        int x,y;                \
+        getyx(stdscr,x,y);      \
+        move(1,1);              \
+        printf(format, ##args); \
+        move(x,y);              \
+    }
+#else
+#define LOG(format,args...); 
+#endif
 typedef int DIRECT;
 
 typedef struct xy{
@@ -9,9 +21,7 @@ typedef struct xy{
 	int y;
 }xy_t;
 
-typedef struct food_xy{
-	xy_t xy_food;
-}food_xy_t;
+xy_t xy_food;
 typedef struct snake_body{
 	xy_t xy_snake;
 	struct snake_body *next;
@@ -40,6 +50,7 @@ void gamewindow_init(int x,int y);
 snake_body_t *snake_init();
 snake_body_t *snake_tail(snake_body_t *snake_head);
 int getkeyvalue();
+void log(const char *msg);
 void snake_show(snake_body_t *snake_head,char globalDir);
 int snake_add(snake_body_t *snake_head,food_xy_t *food_xy,DIRECT *snake_dir,DIRECT *keyboard_dir);
 void snake_free(snake_body_t *snake_head);
@@ -63,12 +74,13 @@ int main()
     attroff(COLOR_PAIR(1));
     refresh();
     while(1){
-		
+        clear();		
+        box(stdscr,'|','-'); 
         snake_show(snake_head,globalDir);
         keyvalue=getkeyvalue();
 		refresh();
         //printf("keyvalue=%x\n",keyvalue);
-        sleep(1);
+        usleep(100);
     }
     return 0;
 	
@@ -78,11 +90,11 @@ void gamewindow_init(int x,int y)
 {
     initscr();
     keypad(stdscr,TRUE);
+    noecho();
     refresh();
     box(stdscr,'|','-'); 
     refresh();
 }
-
 int getkeyvalue()
 {
     //char ch;
@@ -123,11 +135,32 @@ int getkeyvalue()
         break;
     default:
         printf("error direction!\n");
-		printf("globalDir:%d\n",KEY_UP);
+		//printf("globalDir:%d\n",KEY_UP);
 		
         break;
     }
 	return 0;	
+}
+void log(const char *msg)
+{
+    int x,y;
+    getyx(stdscr,x,y);
+    move(1,1);
+    printf("[info:%s]",msg);
+    move(x,y);
+
+    return;
+
+}
+int foodcreat(void)
+{
+	do{
+        xy_food.x=(int)(rand()*1.0/RAND_MAX*COLS);
+		xy_food.y=(int)(rand()*1.0/RAND_MAX*LINES);
+        //printf("xy.x=%d,xy.y=%d!\n",LINES,COLS);
+     }while(!(xy_food.x>3&&xy_food.y>1&&xy_food.y<LINES&&xy_food.x<COLS));
+    
+
 }
 snake_body_t *snake_init()
 {
@@ -149,7 +182,7 @@ snake_body_t *snake_init()
             snake_xy.x=(int)(rand()*1.0/RAND_MAX*COLS);
 		    snake_xy.y=(int)(rand()*1.0/RAND_MAX*LINES);
             //printf("xy.x=%d,xy.y=%d!\n",LINES,COLS);
-        }while(!(snake_xy.x>3&&snake_xy.y>3));
+        }while(!(snake_xy.x>3&&snake_xy.y>1&&snake_xy.y<LINES&&snake_xy.x<COLS));
 		snake_head->xy_snake.x=snake_xy.x;
 		snake_head->xy_snake.y=snake_xy.y;
 		snake1->xy_snake.x=snake_xy.x-1;
@@ -195,16 +228,20 @@ void snake_show(snake_body_t *snake_head,char globalDir)
 	}
     switch(globalDir){
     case up:
-        tmp->xy_snake.x=tmp->xy_snake.x-1;
+        tmp->xy_snake.y=tmp->xy_snake.y-1;
+        LOG("up y=%d",tmp->xy_snake.y);
 		break;
 	case down:	
-    	tmp->xy_snake.x=tmp->xy_snake.x+1;
+    	tmp->xy_snake.y=tmp->xy_snake.y+1;
+        LOG("down y=%d",tmp->xy_snake.y);
 		break;
 	case right:	
-    	tmp->xy_snake.x=tmp->xy_snake.y+1;
+    	tmp->xy_snake.x=tmp->xy_snake.x+1;
+        LOG("right x=%d",tmp->xy_snake.x);
 		break;
 	case left:	
-    	tmp->xy_snake.x=tmp->xy_snake.y-1;
+    	tmp->xy_snake.x=tmp->xy_snake.x-1;
+        LOG("left x=%d",tmp->xy_snake.x);
 		break;
 	default:
 		printf("error dir!\r");
@@ -217,18 +254,53 @@ void snake_show(snake_body_t *snake_head,char globalDir)
     return ;
 
 }
-int snake_add(snake_body_t * snake_head,food_xy_t * food_xy,DIRECT *snake_dir,DIRECT *keyboard_dir)
+int snake_add(snake_body_t * snake_head)
 {
 	int x,y;
+    snake_body_t *tmp=NULL;
 	snake_body_t* snakeTail=snake_tail(snake_head);
 	x=snake_head->xy_snake.x;
 	y=snake_head->xy_snake.y;
-	if(*snake_dir!=-*keyboard_dir){
-	    x=x+dir[*keyboard_dir][0];
-        y=y+dir[*keyboard_dir][1];	
-	}else{
-        printf("operation error!\n");
-        return -1;
+	switch(globalDir){
+        case up:
+            if(snake_head->xy_snake.y-1==food_xy.y){
+                tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
+                tmp->next=snake_head;
+                snake_head->pre=tmp;
+                snake_head=tmp;
+                snake_head->pre=NULL;
+            }
+            break;
+        case down:
+            if(snake_head->xy_snake.y+1==food_xy.y){
+                tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
+                tmp->next=snake_head;
+                snake_head->pre=tmp;
+                snake_head=tmp;
+                snake_head->pre=NULL;
+            }
+            break;
+        case right:
+            if(snake_head->xy_snake.x+1==food_xy.x){
+                tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
+                tmp->next=snake_head;
+                snake_head->pre=tmp;
+                snake_head=tmp;
+                snake_head->pre=NULL;
+            }
+            break;
+        case left:
+            if(snake_head->xy_snake.x-1==food_xy.x){
+                tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
+                tmp->next=snake_head;
+                snake_head->pre=tmp;
+                snake_head=tmp;
+                snake_head->pre=NULL;
+            }
+            break;
+        default:
+            printf("operation error!\n");
+            break;
     }
 	return 0;
 }
