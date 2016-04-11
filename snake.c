@@ -14,6 +14,10 @@
 #else
 #define LOG(format,args...); 
 #endif
+
+//#define FALSE 0
+//#define TRUE  1
+
 typedef int DIRECT;
 
 typedef struct xy{
@@ -48,11 +52,12 @@ snake_body_t *snake_head=NULL;
 
 void gamewindow_init(int x,int y);
 snake_body_t *snake_init();
+int foodcreat(void);
 snake_body_t *snake_tail(snake_body_t *snake_head);
 int getkeyvalue();
 void log(const char *msg);
 void snake_show(snake_body_t *snake_head,char globalDir);
-int snake_add(snake_body_t *snake_head,food_xy_t *food_xy,DIRECT *snake_dir,DIRECT *keyboard_dir);
+int snake_add(snake_body_t *snake_head);
 void snake_free(snake_body_t *snake_head);
 int snake_rule(snake_body_t *snake_head,xy_t windows);
 
@@ -62,7 +67,7 @@ int main()
     const int WIDTH = COLS-2;
     const int HIGHT = LINES-2;
     int keyvalue;
-    
+    xy_t store_xy;
     gamewindow_init(20,20);
     snake_head=snake_init();
     start_color();
@@ -73,13 +78,20 @@ int main()
     //mvaddstr(HIGHT+11,WIDTH+11,"zhanglei");
     attroff(COLOR_PAIR(1));
     refresh();
+    foodcreat();
+    mvaddch(xy_food.y,xy_food.x,'#');
     while(1){
         clear();		
+        getyx(stdscr,store_xy.y,store_xy.x);
+        mvaddch(xy_food.y,xy_food.x,'#');
         box(stdscr,'|','-'); 
         snake_show(snake_head,globalDir);
         keyvalue=getkeyvalue();
 		refresh();
         //printf("keyvalue=%x\n",keyvalue);
+        if(TRUE==snake_add(snake_head)){
+            foodcreat();
+        }
         usleep(100);
     }
     return 0;
@@ -263,46 +275,67 @@ int snake_add(snake_body_t * snake_head)
 	y=snake_head->xy_snake.y;
 	switch(globalDir){
         case up:
-            if(snake_head->xy_snake.y-1==food_xy.y){
+            if((snake_head->xy_snake.y-1==xy_food.y)&&(snake_head->xy_snake.x==xy_food.x)){
                 tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
                 tmp->next=snake_head;
+                tmp->xy_snake.y=xy_food.y;
+                tmp->xy_snake.x=xy_food.x;
                 snake_head->pre=tmp;
                 snake_head=tmp;
                 snake_head->pre=NULL;
+            }
+            else{
+                return FALSE;
             }
             break;
         case down:
-            if(snake_head->xy_snake.y+1==food_xy.y){
+            if((snake_head->xy_snake.y+1==xy_food.y)&&(snake_head->xy_snake.x==xy_food.x)){
                 tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
                 tmp->next=snake_head;
+                tmp->xy_snake.y=xy_food.y;
+                tmp->xy_snake.x=xy_food.x;
                 snake_head->pre=tmp;
                 snake_head=tmp;
                 snake_head->pre=NULL;
+            }   
+            else{
+                return FALSE;              
             }
             break;
         case right:
-            if(snake_head->xy_snake.x+1==food_xy.x){
+            if((snake_head->xy_snake.x+1==xy_food.y)&&(snake_head->xy_snake.y==xy_food.y)){
                 tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
                 tmp->next=snake_head;
+                tmp->xy_snake.y=xy_food.y;
+                tmp->xy_snake.x=xy_food.x;
                 snake_head->pre=tmp;
                 snake_head=tmp;
                 snake_head->pre=NULL;
             }
+            else{
+                return FALSE;              
+            }
             break;
         case left:
-            if(snake_head->xy_snake.x-1==food_xy.x){
+            if((snake_head->xy_snake.x+1==xy_food.x)&&(snake_head->xy_snake.y==xy_food.y)){
                 tmp=(snake_body_t *)malloc(sizeof(snake_body_t));
                 tmp->next=snake_head;
+                tmp->xy_snake.y=xy_food.y;
+                tmp->xy_snake.x=xy_food.x;
                 snake_head->pre=tmp;
                 snake_head=tmp;
                 snake_head->pre=NULL;
+            }
+            else{
+                return FALSE;              
             }
             break;
         default:
             printf("operation error!\n");
+            return FALSE;
             break;
     }
-	return 0;
+	return TRUE;
 }
 
 void snake_free(snake_body_t * snake_head)
